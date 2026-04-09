@@ -47,7 +47,7 @@ Rag_project/
 ### 1 — Clone & configure
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/sivakumarazure18-wq/RAG_CHAT_APP.git
 cd Rag_project
 cp config/.env.example config/.env
 # Edit config/.env with your Azure credentials
@@ -80,7 +80,7 @@ docker-compose up --build
 - Frontend: http://localhost:8501  
 - API Docs: http://localhost:50505/docs
 
-### Option B — PowerShell (local dev)
+### Option B — PowerShell (local dev) - Suggested
 
 ```powershell
 .\devops\start.ps1
