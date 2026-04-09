@@ -1,0 +1,42 @@
+# =============================================================
+# docker-compose.yml — Starts backend + frontend services
+# =============================================================
+version: "3.9"
+
+services:
+  # ── FastAPI backend ─────────────────────────────────────────
+  backend:
+    build:
+      context: ..          # project root (contains src/, config/, requirements.txt)
+      dockerfile: devops/Dockerfile
+      target: backend
+    container_name: rag_backend
+    env_file:
+      - ../config/.env
+    ports:
+      - "50505:50505"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50505/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Streamlit frontend ──────────────────────────────────────
+  frontend:
+    build:
+      context: ..
+      dockerfile: devops/Dockerfile
+      target: frontend
+    container_name: rag_frontend
+    env_file:
+      - ../config/.env
+    environment:
+      # Override so Streamlit can reach backend inside Docker network
+      API_ADVERTISED_HOST: backend
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

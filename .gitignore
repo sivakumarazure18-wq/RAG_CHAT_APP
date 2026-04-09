@@ -1,0 +1,19 @@
+# Python virtual environment
+venv/
+.env/
+rag_venv/
+__pycache__/
+*.pyc
+
+# Environment variables (DO NOT PUSH)
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
