@@ -48,7 +48,7 @@ Rag_project/
 
 ```bash
 git clone https://github.com/sivakumarazure18-wq/RAG_CHAT_APP.git
-cd Rag_project
+cd RAG_CHAT_APP
 cp config/.env.example config/.env
 # Edit config/.env with your Azure credentials
 ```
