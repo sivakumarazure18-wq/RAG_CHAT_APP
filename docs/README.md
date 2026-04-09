@@ -74,6 +74,13 @@ AZURE_SEARCH_API_KEY=...
   env-name\Scripts\activate
   ```
 
+### 4 — Installing Requirements
+
+- Go to The terminal
+  ```
+   pip install -r requirements.txt
+  ```
+
 ## 🚀 Running the app
 
 ### Option A — Docker Compose (recommended)
