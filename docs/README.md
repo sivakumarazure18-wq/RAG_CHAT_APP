@@ -66,6 +66,13 @@ AZURE_SEARCH_API_KEY=...
 > **Azure Search index requirement**: Your index must have a field named `content_vector` (type `Collection(Edm.Single)`, dimensions=1536) for vector search. Also include `content`, `title`, and `source` string fields.
 
 ---
+### 3 — create Python Virtual Environment
+
+- Go to The terminal
+  ```
+  python -m venv env-name
+  env-name\Scripts\activate
+  ```
 
 ## 🚀 Running the app
 
