@@ -1,10 +1,3 @@
-"""
-streamlit.py — Premium Light UI RAG Chat Frontend
-
-Run:
-    streamlit run streamlit.py
-"""
-
 import os
 import uuid
 import time
@@ -12,7 +5,7 @@ import requests
 import streamlit as st
 from dotenv import load_dotenv
 
-# ── Load ENV ──────────────────────────────────────────────────────────────────
+# -- Load ENV --
 _env_path = os.path.join(os.path.dirname(__file__), "..", "..", "config", ".env")
 load_dotenv(dotenv_path=_env_path)
 
@@ -24,222 +17,157 @@ CHAT_URL = f"{API_BASE}/chat"
 HEALTH_URL = f"{API_BASE}/health"
 DELETE_SESSION_URL = f"{API_BASE}/session"
 
-# ── Page Config ───────────────────────────────────────────────────────────────
+# -- Page Config --
 st.set_page_config(
-    page_title="RAG Chat",
-    page_icon="💬",
-    layout="centered",
+    page_title="RAG Chat Assistant",
+    page_icon="🤖",
+    layout="wide", # Wider layout feels more modern
 )
 
-# ── PREMIUM LIGHT THEME ───────────────────────────────────────────────────────
+# -- Premium Custom Styling --
 st.markdown("""
-<style>
-/* Global */
-body, .stApp {
-    background-color: #f9fafb;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-}
+    <style>
+    /* Remove default padding */
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    
+    /* Custom Sidebar Gradient */
+    [data-testid="stSidebar"] {
+        background-image: linear-gradient(#ffffff, #f1f5f9);
+        border-right: 1px solid #e2e8f0;
+    }
 
-/* Sidebar */
-section[data-testid="stSidebar"] {
-    background: #ffffff;
-    border-right: 1px solid #e5e7eb;
-}
+    /* Clean Button Styling */
+    .stButton>button {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background-color: white;
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        border-color: #2563eb;
+        color: #2563eb;
+        background-color: #eff6ff;
+    }
 
-/* Title */
-.title {
-    font-size: 1.8rem;
-    font-weight: 600;
-    color: #111827;
-}
-.subtitle {
-    font-size: 0.85rem;
-    color: #6b7280;
-    margin-bottom: 1rem;
-}
-
-/* Chat bubbles */
-.msg-user {
-    display: flex;
-    justify-content: flex-end;
-    margin: 10px 0;
-}
-.msg-user .bubble {
-    background: #2563eb;
-    color: white;
-    padding: 10px 14px;
-    border-radius: 16px 16px 4px 16px;
-    max-width: 70%;
-}
-
-.msg-ai {
-    display: flex;
-    margin: 10px 0;
-}
-.msg-ai .avatar {
-    margin-right: 8px;
-}
-.msg-ai .bubble {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    padding: 10px 14px;
-    border-radius: 4px 16px 16px 16px;
-    max-width: 75%;
-}
-
-/* Sources */
-.source-chip {
-    font-size: 0.7rem;
-    background: #eef2ff;
-    padding: 3px 7px;
-    border-radius: 8px;
-    margin-right: 5px;
-}
-
-/* Input */
-.stTextInput input {
-    border-radius: 12px !important;
-    border: 1px solid #d1d5db !important;
-    padding: 10px !important;
-}
-
-/* Buttons */
-.stButton button {
-    background: #2563eb;
-    color: white;
-    border-radius: 10px;
-}
-</style>
+    /* Status Indicator */
+    .status-dot {
+        height: 10px; width: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
-# ── Session State ─────────────────────────────────────────────────────────────
+# -- Session State Management --
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "show_sources" not in st.session_state:
+    st.session_state.show_sources = True
 
-if "debug" not in st.session_state:
-    st.session_state.debug = False
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helper Functions --
 def check_backend():
     try:
-        return requests.get(HEALTH_URL, timeout=3).status_code == 200
+        return requests.get(HEALTH_URL, timeout=2).status_code == 200
     except:
         return False
 
-def call_chat_api(query):
-    response = requests.post(
-        CHAT_URL,
-        json={"query": query, "session_id": st.session_state.session_id},
-        timeout=60
-    )
-    response.raise_for_status()
-    return response.json()
+def clear_session():
+    try:
+        requests.delete(f"{DELETE_SESSION_URL}/{st.session_state.session_id}")
+    except:
+        pass
+    st.session_state.messages = []
+    st.session_state.session_id = str(uuid.uuid4())
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
+# -- Sidebar UI --
 with st.sidebar:
-    st.markdown("## 💬 RAG Chat")
-
-    if check_backend():
-        st.success("Backend connected")
-    else:
-        st.error("Backend not reachable")
-
-    st.markdown(f"**Session:** `{st.session_state.session_id[:8]}`")
-    st.markdown(f"Messages: {len(st.session_state.messages)}")
-
-    if st.button("🗑 Clear Chat"):
-        try:
-            requests.delete(f"{DELETE_SESSION_URL}/{st.session_state.session_id}")
-        except:
-            pass
-        st.session_state.messages = []
-        st.session_state.session_id = str(uuid.uuid4())
+    st.title("⚙️ Settings")
+    
+    # Connection Status
+    is_online = check_backend()
+    status_color = "#10b981" if is_online else "#ef4444"
+    status_text = "Backend Online" if is_online else "Backend Offline"
+    st.markdown(f'<p><span class="status-dot" style="background-color: {status_color};"></span>{status_text}</p>', unsafe_allow_html=True)
+    
+    st.divider()
+    
+    st.session_state.show_sources = st.toggle("Show citations", value=True)
+    
+    st.info(f"**Session ID:** \n`{st.session_state.session_id[:13]}...`")
+    
+    if st.button("🗑️ Reset Conversation"):
+        clear_session()
         st.rerun()
 
-    st.session_state.debug = st.toggle("Show sources", value=st.session_state.debug)
+# -- Main Chat Interface --
+st.title("💬 RAG Chat Assistant")
+st.caption("RAG | Azure OpenAI | FastAPI Backend")
 
-# ── Header ────────────────────────────────────────────────────────────────────
-st.markdown('<div class="title">💬 RAG Chat</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Azure OpenAI + AI Search + FastAPI</div>', unsafe_allow_html=True)
+# Display Chat History
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        
+        # Display sources if they exist and toggle is on
+        if st.session_state.show_sources and message.get("sources"):
+            with st.expander("View Reference Sources"):
+                for idx, source in enumerate(message["sources"]):
+                    st.markdown(f"**{idx+1}. {source.get('title', 'Unknown Source')}**")
+                    st.caption(f"Relevance Score: {source.get('score', 'N/A')}")
 
-# ── Chat Display ──────────────────────────────────────────────────────────────
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        st.markdown(
-            f'<div class="msg-user"><div class="bubble">{msg["content"]}</div></div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f'<div class="msg-ai"><div class="avatar">🤖</div><div class="bubble">{msg["content"]}</div></div>',
-            unsafe_allow_html=True,
-        )
+# Chat Input
+if prompt := st.chat_input("Ask a question about your documents..."):
+    
+    # 1. Add User Message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-        # Sources
-        if st.session_state.debug and msg.get("sources"):
-            with st.expander("Sources"):
-                for s in msg["sources"]:
-                    st.write(f"**{s['title']}** ({s['score']})")
+    # 2. Call API & Handle Response
+    with st.chat_message("assistant"):
+        if not is_online:
+            error_msg = "I'm sorry, I cannot connect to the knowledge base right now."
+            st.error(error_msg)
+            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+        else:
+            response_placeholder = st.empty()
+            full_response = ""
+            
+            with st.spinner("Searching knowledge base..."):
+                try:
+                    res = requests.post(
+                        CHAT_URL,
+                        json={"query": prompt, "session_id": st.session_state.session_id},
+                        timeout=60
+                    ).json()
+                    
+                    answer = res.get("answer", "No response from AI.")
+                    sources = res.get("sources", [])
+                    
+                    # Simulated Typing Effect
+                    for chunk in answer.split(" "):
+                        full_response += chunk + " "
+                        time.sleep(0.02)
+                        response_placeholder.markdown(full_response + "▌")
+                    
+                    response_placeholder.markdown(full_response)
 
-        # Copy block
-        st.code(msg["content"], language=None)
-
-# ── Input Row ─────────────────────────────────────────────────────────────────
-st.markdown("---")
-col1, col2 = st.columns([6, 1])
-
-with col1:
-    user_input = st.text_input(
-        "Message",
-        placeholder="Ask anything about your documents...",
-        label_visibility="collapsed",
-    )
-
-with col2:
-    send = st.button("Send", use_container_width=True)
-
-# ── Send Logic ────────────────────────────────────────────────────────────────
-if send and user_input.strip():
-    query = user_input.strip()
-
-    st.session_state.messages.append({"role": "user", "content": query})
-
-    if not check_backend():
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": "⚠️ Backend not reachable.",
-            "sources": []
-        })
-        st.rerun()
-
-    with st.spinner("Thinking..."):
-        try:
-            res = call_chat_api(query)
-            answer = res.get("answer", "No answer")
-            sources = res.get("sources", [])
-        except Exception as e:
-            answer = f"⚠️ Error: {e}"
-            sources = []
-
-    # ── Typing Effect ────────────────────────────────────────────────────────
-    placeholder = st.empty()
-    typed = ""
-
-    for word in answer.split():
-        typed += word + " "
-        placeholder.markdown(
-            f'<div class="msg-ai"><div class="avatar">🤖</div><div class="bubble">{typed}</div></div>',
-            unsafe_allow_html=True,
-        )
-        time.sleep(0.015)
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": answer,
-        "sources": sources
-    })
-
-    st.rerun()
+                    # Add Sources to the UI after typing
+                    if st.session_state.show_sources and sources:
+                        with st.expander("View Reference Sources"):
+                            for idx, s in enumerate(sources):
+                                st.markdown(f"**{idx+1}. {s.get('title', 'Source')}**")
+                    
+                    # Save to History
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": full_response,
+                        "sources": sources
+                    })
+                    
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
